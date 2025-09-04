@@ -33,14 +33,13 @@ const errorMessage = document.getElementById('error-message');
 const errorText = document.getElementById('error-text');
 
 // Initialize admin panel
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', function() {
     // Clear any existing admin session to force fresh login
     localStorage.removeItem('currentAdmin');
     
-    await loadData();
+    loadData();
     checkAdminAuth();
     setupEventListeners();
-    setupRealtimeListeners();
 });
 
 // Allowed admin emails
@@ -52,48 +51,21 @@ const ALLOWED_ADMIN_EMAILS = [
     'Y2005baba@gmail.com'
 ];
 
-// Load data from Firebase
-async function loadData() {
+// Load data from localStorage
+function loadData() {
     try {
-        // Load ideas from Firebase
-        const ideasSnapshot = await db.collection('ideas').get();
-        ideas = ideasSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        }));
-        
-        // Load users from Firebase
-        const usersSnapshot = await db.collection('users').get();
-        users = usersSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        }));
-        
-        console.log('Admin Panel - Loaded ideas from Firebase:', ideas);
-        console.log('Admin Panel - Loaded users from Firebase:', users);
-        
-        // Fallback to localStorage if Firebase is not configured
-        if (ideas.length === 0) {
-            const localIdeas = JSON.parse(localStorage.getItem('ideas')) || [];
-            if (localIdeas.length > 0) {
-                console.log('Falling back to localStorage ideas');
-                ideas = localIdeas;
-            }
-        }
-        
-        if (users.length === 0) {
-            const localUsers = JSON.parse(localStorage.getItem('users')) || [];
-            if (localUsers.length > 0) {
-                console.log('Falling back to localStorage users');
-                users = localUsers;
-            }
-        }
-    } catch (error) {
-        console.error('Error loading data from Firebase:', error);
-        // Fallback to localStorage
+        // Load ideas from localStorage
         ideas = JSON.parse(localStorage.getItem('ideas')) || [];
+        
+        // Load users from localStorage
         users = JSON.parse(localStorage.getItem('users')) || [];
-        console.log('Using localStorage fallback');
+        
+        console.log('Admin Panel - Loaded ideas from localStorage:', ideas);
+        console.log('Admin Panel - Loaded users from localStorage:', users);
+    } catch (error) {
+        console.error('Error loading data from localStorage:', error);
+        ideas = [];
+        users = [];
     }
     
     // Ensure all admin users exist and update their passwords
@@ -103,6 +75,7 @@ async function loadData() {
         
         if (!existingAdmin) {
             const adminUser = {
+                id: `admin-${i + 1}`,
                 name: `Admin User ${i + 1}`,
                 email: email,
                 password: 'admin123',
@@ -110,37 +83,18 @@ async function loadData() {
                 createdAt: new Date().toISOString()
             };
             
-            try {
-                // Add to Firebase
-                const docRef = await db.collection('users').add(adminUser);
-                adminUser.id = docRef.id;
-                users.push(adminUser);
-                console.log('Created admin user in Firebase:', adminUser.email);
-            } catch (error) {
-                console.error('Error creating admin user:', error);
-                // Fallback to localStorage
-                adminUser.id = `admin-${i + 1}`;
-                users.push(adminUser);
-                localStorage.setItem('users', JSON.stringify(users));
-            }
+            users.push(adminUser);
+            console.log('Created admin user:', adminUser.email);
         } else {
             // Update existing admin user to ensure correct password and admin status
             existingAdmin.password = 'admin123';
             existingAdmin.isAdmin = true;
-            
-            try {
-                // Update in Firebase
-                await db.collection('users').doc(existingAdmin.id).update({
-                    password: 'admin123',
-                    isAdmin: true
-                });
-            } catch (error) {
-                console.error('Error updating admin user:', error);
-                // Fallback to localStorage
-                localStorage.setItem('users', JSON.stringify(users));
-            }
+            console.log('Updated admin user:', existingAdmin.email);
         }
     }
+    
+    // Save users to localStorage
+    localStorage.setItem('users', JSON.stringify(users));
 }
 
 // Check if admin is already logged in
