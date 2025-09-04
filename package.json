@@ -5,7 +5,8 @@
   "main": "admin.html",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "build": "echo 'Build complete'"
   },
   "dependencies": {
     "mongodb": "^6.7.0",
