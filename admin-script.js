@@ -33,11 +33,11 @@ const errorMessage = document.getElementById('error-message');
 const errorText = document.getElementById('error-text');
 
 // Initialize admin panel
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     // Clear any existing admin session to force fresh login
     localStorage.removeItem('currentAdmin');
     
-    loadData();
+    await loadData();
     checkAdminAuth();
     setupEventListeners();
 });
@@ -51,21 +51,40 @@ const ALLOWED_ADMIN_EMAILS = [
     'Y2005baba@gmail.com'
 ];
 
-// Load data from localStorage
-function loadData() {
+// Load data from database API
+async function loadData() {
     try {
-        // Load ideas from localStorage
-        ideas = JSON.parse(localStorage.getItem('ideas')) || [];
+        // Load ideas from database API
+        const ideasResponse = await fetch('/api/ideas');
+        if (ideasResponse.ok) {
+            ideas = await ideasResponse.json();
+            console.log('Admin Panel - Loaded ideas from database:', ideas);
+        } else {
+            console.error('Failed to load ideas from database');
+            ideas = [];
+        }
         
-        // Load users from localStorage
-        users = JSON.parse(localStorage.getItem('users')) || [];
-        
-        console.log('Admin Panel - Loaded ideas from localStorage:', ideas);
-        console.log('Admin Panel - Loaded users from localStorage:', users);
+        // Load users from database API
+        const usersResponse = await fetch('/api/users');
+        if (usersResponse.ok) {
+            users = await usersResponse.json();
+            console.log('Admin Panel - Loaded users from database:', users);
+        } else {
+            console.error('Failed to load users from database');
+            users = [];
+        }
     } catch (error) {
-        console.error('Error loading data from localStorage:', error);
-        ideas = [];
-        users = [];
+        console.error('Error loading data from database:', error);
+        // Fallback to localStorage if database fails
+        try {
+            ideas = JSON.parse(localStorage.getItem('ideas')) || [];
+            users = JSON.parse(localStorage.getItem('users')) || [];
+            console.log('Admin Panel - Fallback to localStorage:', { ideas, users });
+        } catch (localError) {
+            console.error('Error loading from localStorage fallback:', localError);
+            ideas = [];
+            users = [];
+        }
     }
     
     // Ensure all admin users exist and update their passwords
@@ -487,9 +506,9 @@ function showMessage(message, type) {
 }
 
 // Auto-refresh data every 30 seconds
-setInterval(() => {
+setInterval(async () => {
     if (currentAdmin) {
-        loadData();
+        await loadData();
         updateStats();
         loadIdeas();
     }
@@ -533,9 +552,9 @@ function setupRealtimeListeners() {
 }
 
 // Add real-time updates when data changes (localStorage fallback)
-window.addEventListener('storage', (e) => {
+window.addEventListener('storage', async (e) => {
     if (e.key === 'ideas' && currentAdmin) {
-        loadData();
+        await loadData();
         updateStats();
         loadIdeas();
     }
